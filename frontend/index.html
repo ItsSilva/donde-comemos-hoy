@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>¿Dónde comemos hoy?</title>
+  <meta name="description" content="Sistema de recomendación grupal para decidir dónde comer en Cali." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,600..900,80,1&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#inicio" aria-label="Ir al inicio">
+        <span class="brand-mark">¿</span>
+        <span class="brand-copy">
+          <strong>Dónde comemos hoy</strong>
+          <small>recomendación grupal</small>
+        </span>
+      </a>
+      <nav class="desktop-nav" aria-label="Navegación principal">
+        <a href="#como-funciona">Cómo funciona</a>
+        <a href="#grupo">Crear grupo</a>
+        <a href="#resultados">Resultados</a>
+      </nav>
+      <button class="ghost-btn" id="demoBtn" type="button">Usar demo</button>
+    </header>
+
+    <main>
+      <section class="hero" id="inicio">
+        <div class="hero-pattern" aria-hidden="true"></div>
+        <div class="hero-copy">
+          <p class="eyebrow">Cali · grupos · gustos · consenso</p>
+          <h1>Que el grupo coma rico sin pelear por el lugar.</h1>
+          <p class="hero-text">
+            Un portal visual para capturar preferencias, agregarlas con distintos métodos y recomendar restaurantes compatibles con todo el grupo.
+          </p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="#grupo">Empezar</a>
+            <a class="secondary-btn" href="#como-funciona">Ver lógica</a>
+          </div>
+        </div>
+
+        <aside class="phone-preview" aria-label="Vista previa de la app">
+          <div class="phone">
+            <div class="dynamic-island"></div>
+            <div class="phone-card splash-card">
+              <span class="mini-logo">¿dch?</span>
+              <p>tu mood gastronómico</p>
+            </div>
+            <div class="bubble-row">
+              <span>picante</span><span>dulce</span><span>salado</span>
+            </div>
+            <div class="recommendation-mini">
+              <span class="score-dot">94%</span>
+              <div>
+                <strong>Mejor match</strong>
+                <small>balancea gustos + restricciones</small>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <p class="marquee" aria-hidden="true">elige · compara · negocia · recomienda · come · evalúa ·</p>
+      </section>
+
+      <section class="section intro-grid" id="como-funciona">
+        <article class="panel light-panel">
+          <span class="section-number">01</span>
+          <h2>Del gusto individual al perfil N del grupo.</h2>
+          <p>
+            Cada integrante califica cinco dimensiones: picante, dulce, salado, vegetariano y carne. El sistema transforma esos datos en un vector grupal.
+          </p>
+        </article>
+        <article class="panel blue-panel">
+          <span class="section-number">02</span>
+          <h2>El algoritmo compara el grupo con restaurantes.</h2>
+          <p>
+            El frontend envía el grupo a la API Flask. El backend aplica similitud coseno y devuelve los restaurantes ordenados por compatibilidad.
+          </p>
+        </article>
+        <article class="panel green-panel">
+          <span class="section-number">03</span>
+          <h2>La recomendación muestra justicia, no solo ranking.</h2>
+          <p>
+            Además del score grupal, se visualiza la satisfacción mínima para entender quién queda menos representado en la decisión.
+          </p>
+        </article>
+      </section>
+
+      <section class="section workspace" id="grupo">
+        <div class="workspace-header">
+          <div>
+            <p class="eyebrow">Crear sesión</p>
+            <h2>Arma el grupo</h2>
+          </div>
+          <div class="segmented" role="group" aria-label="Método de agregación">
+            <button class="segment active" data-method="mayoria_ponderada" type="button">Mayoría</button>
+            <button class="segment" data-method="promedio" type="button">Promedio</button>
+            <button class="segment" data-method="minima_miseria" type="button">Cuidado</button>
+            <button class="segment" data-method="media_satisfaccion" type="button">Consenso</button>
+          </div>
+        </div>
+
+        <div class="form-layout">
+          <form class="profile-card" id="profileForm">
+            <div class="field-row">
+              <label>
+                Nombre
+                <input id="nombre" name="nombre" type="text" placeholder="Ej. Camila" required />
+              </label>
+              <label>
+                Presupuesto máx.
+                <input id="presupuesto" name="presupuesto" type="number" min="8000" step="1000" value="30000" required />
+              </label>
+            </div>
+
+            <div class="taste-panel">
+              <div class="taste-title">
+                <h3>Preferencias</h3>
+                <small>1 = poco · 10 = mucho</small>
+              </div>
+              <div id="sliders"></div>
+            </div>
+
+            <fieldset class="restrictions">
+              <legend>Restricciones</legend>
+              <label><input type="checkbox" value="vegetariano"> Vegetariano</label>
+              <label><input type="checkbox" value="vegano"> Vegano</label>
+              <label><input type="checkbox" value="sin_gluten"> Sin gluten</label>
+              <label><input type="checkbox" value="sin_mariscos"> Sin mariscos</label>
+            </fieldset>
+
+            <button class="primary-btn wide" type="submit">Agregar integrante</button>
+          </form>
+
+          <aside class="group-card">
+            <div class="card-title-row">
+              <div>
+                <p class="eyebrow">Integrantes</p>
+                <h3 id="memberCount">0 personas</h3>
+              </div>
+              <button class="tiny-btn" id="clearBtn" type="button">Limpiar</button>
+            </div>
+            <div class="empty-state" id="emptyState">
+              <span>+</span>
+              <p>Agrega mínimo una persona para recomendar.</p>
+            </div>
+            <div class="member-list" id="memberList"></div>
+            <button class="recommend-btn" id="recommendBtn" type="button">Recomendar lugar</button>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section results" id="resultados">
+        <div class="results-head">
+          <div>
+            <p class="eyebrow">Resultado</p>
+            <h2>Restaurantes recomendados</h2>
+          </div>
+          <button class="secondary-btn compact" id="compareBtn" type="button">Comparar métodos</button>
+        </div>
+
+        <div class="status-card" id="statusCard">
+          <span class="loader hidden" id="loader"></span>
+          <p id="statusText">Cuando armes el grupo, aquí aparecerá la recomendación.</p>
+        </div>
+
+        <div class="profile-n hidden" id="profileN"></div>
+        <div class="cards-grid" id="resultsGrid"></div>
+        <div class="compare-panel hidden" id="comparePanel"></div>
+      </section>
+    </main>
+
+    <nav class="mobile-nav" aria-label="Navegación móvil">
+      <a href="#inicio">Home</a>
+      <a href="#como-funciona">Lógica</a>
+      <a class="add-dot" href="#grupo">+</a>
+      <a href="#resultados">Match</a>
+    </nav>
+  </div>
+
+  <script src="/script.js"></script>
+</body>
+</html>

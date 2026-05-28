@@ -41,14 +41,15 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from core.motor_recomendacion import MotorRecomendacionGrupal, PerfilUsuario, DIMS
 from data.base_datos import (
-    cargar_restaurantes, crear_grupo, agregar_miembro_grupo,
+    cargar_restaurantes, crear_grupo, guardar_integrantes_grupo,
     guardar_recomendacion, obtener_o_crear_usuario, guardar_sesion, guardar_feedback
 )
 
-app = Flask(__name__)
+FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend')
+app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -101,9 +102,29 @@ def _serializar_resultado(resultado) -> dict:
     }
 
 
+def _adjuntar_ids_recomendacion(respuesta: dict, recomendaciones_guardadas: list[dict]) -> dict:
+    """Pone el id de la fila recomendaciones dentro de cada restaurante del response."""
+    ids_por_restaurante = {
+        str(r.get('restaurante_id')): r.get('id')
+        for r in recomendaciones_guardadas
+        if r.get('restaurante_id') and r.get('id')
+    }
+
+    for restaurante in respuesta.get('restaurantes', []):
+        restaurante['recomendacion_id'] = ids_por_restaurante.get(str(restaurante.get('id')))
+
+    return respuesta
+
+
 # ─────────────────────────────────────────────────────────────────
 # ENDPOINTS
 # ─────────────────────────────────────────────────────────────────
+
+
+@app.route('/', methods=['GET'])
+def portal_web():
+    """Sirve el frontend visual del portal web."""
+    return send_from_directory(FRONTEND_DIR, 'index.html')
 
 @app.route('/salud', methods=['GET'])
 def salud():
@@ -156,12 +177,35 @@ def recomendar():
         motor       = MotorRecomendacionGrupal(restaurantes)
         resultado   = motor.recomendar(perfiles, metodo=metodo, top_k=top_k)
 
-        # Persistir sesión y recomendaciones en Supabase
+        # Persistir sesión completa en Supabase:
+        # grupos + usuarios + perfiles_usuario + grupo_miembros + recomendaciones + sesiones
         grupo_id = crear_grupo(canal='web', metodo=metodo)
-        guardar_recomendacion(grupo_id, resultado)
+
+        usuarios_guardados = guardar_integrantes_grupo(grupo_id, perfiles, canal='web')
+        recomendaciones_guardadas = guardar_recomendacion(grupo_id, resultado, top_k=top_k)
+        sesion_id = guardar_sesion(
+            grupo_id=grupo_id,
+            usuario_id=None,
+            canal='web',
+            estado='recomendacion_generada',
+            contexto={
+                'grupo': grupo_json,
+                'metodo': metodo,
+                'top_k': top_k,
+                'usuarios_guardados': usuarios_guardados,
+                'resultado': {
+                    'metodo_usado': resultado.metodo_usado,
+                    'perfil_n': resultado.perfil_n,
+                    'restaurantes': [r['restaurante'].nombre for r in resultado.restaurantes],
+                },
+            },
+        )
 
         respuesta = _serializar_resultado(resultado)
+        respuesta = _adjuntar_ids_recomendacion(respuesta, recomendaciones_guardadas)
         respuesta['grupo_id'] = grupo_id
+        respuesta['sesion_id'] = sesion_id
+        respuesta['usuarios_guardados'] = usuarios_guardados
         return jsonify(respuesta)
 
     except ValueError as e:
@@ -189,10 +233,32 @@ def recomendar_auto():
         resultado   = motor.recomendar_automatico(perfiles, top_k=top_k)
 
         grupo_id = crear_grupo(canal='web', metodo=resultado.metodo_usado)
-        guardar_recomendacion(grupo_id, resultado)
+
+        usuarios_guardados = guardar_integrantes_grupo(grupo_id, perfiles, canal='web')
+        recomendaciones_guardadas = guardar_recomendacion(grupo_id, resultado, top_k=top_k)
+        sesion_id = guardar_sesion(
+            grupo_id=grupo_id,
+            usuario_id=None,
+            canal='web',
+            estado='recomendacion_generada_auto',
+            contexto={
+                'grupo': datos['grupo'],
+                'metodo': resultado.metodo_usado,
+                'top_k': top_k,
+                'usuarios_guardados': usuarios_guardados,
+                'resultado': {
+                    'metodo_usado': resultado.metodo_usado,
+                    'perfil_n': resultado.perfil_n,
+                    'restaurantes': [r['restaurante'].nombre for r in resultado.restaurantes],
+                },
+            },
+        )
 
         respuesta = _serializar_resultado(resultado)
+        respuesta = _adjuntar_ids_recomendacion(respuesta, recomendaciones_guardadas)
         respuesta['grupo_id'] = grupo_id
+        respuesta['sesion_id'] = sesion_id
+        respuesta['usuarios_guardados'] = usuarios_guardados
         return jsonify(respuesta)
 
     except Exception as e:
