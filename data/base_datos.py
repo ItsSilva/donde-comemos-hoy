@@ -62,6 +62,12 @@ def obtener_o_crear_usuario(nombre: str,
             if res.data:
                 return res.data[0]
 
+        # Buscar por nombre + canal cuando no hay telegram_id.
+        # Esto evita duplicar usuarios cada vez que el mismo integrante usa el portal.
+        res = cliente.table('usuarios').select('*').eq('nombre', nombre).eq('canal_origen', canal).execute()
+        if res.data:
+            return res.data[0]
+
         # Crear nuevo usuario
         nuevo = {
             'nombre': nombre,
@@ -195,6 +201,40 @@ def agregar_miembro_grupo(grupo_id: str, usuario_id: str,
         return False
 
 
+def guardar_integrantes_grupo(grupo_id: str, perfiles: list[PerfilUsuario],
+                              canal: str = 'web') -> list[dict]:
+    """
+    Guarda en Supabase todo lo relacionado con los integrantes de una recomendación:
+      1. usuario en tabla usuarios
+      2. perfil en tabla perfiles_usuario
+      3. relación usuario-grupo en grupo_miembros
+
+    Retorna una lista de usuarios creados/encontrados para poder usar sus IDs después.
+    """
+    usuarios_guardados = []
+
+    for perfil in perfiles:
+        usuario = obtener_o_crear_usuario(nombre=perfil.nombre, canal=canal)
+        if not usuario or not usuario.get('id'):
+            print(f"[BD] No se pudo crear/obtener usuario para {perfil.nombre}")
+            continue
+
+        usuarios_guardados.append(usuario)
+
+        # Guardar preferencias base del usuario
+        guardar_perfil_usuario(usuario['id'], perfil)
+
+        # Guardar pertenencia a la sesión grupal
+        agregar_miembro_grupo(
+            grupo_id=grupo_id,
+            usuario_id=usuario['id'],
+            presupuesto=perfil.presupuesto_max,
+            peso_voto=perfil.peso_voto,
+        )
+
+    return usuarios_guardados
+
+
 # ─────────────────────────────────────────────────────────────────
 # RESTAURANTES
 # ─────────────────────────────────────────────────────────────────
@@ -273,11 +313,14 @@ def _restaurantes_fallback() -> list[Restaurante]:
 
 def guardar_recomendacion(grupo_id: str,
                            resultado,  # ResultadoRecomendacion
-                           top_k: int = 3) -> bool:
-    """Persiste las recomendaciones generadas para una sesión grupal."""
+                           top_k: int = 3) -> list[dict]:
+    """
+    Persiste las recomendaciones generadas para una sesión grupal.
+    Retorna las filas insertadas para poder enviar recomendacion_id al frontend.
+    """
     cliente = _get_cliente()
     if not cliente:
-        return True
+        return []
 
     try:
         registros = []
@@ -292,11 +335,12 @@ def guardar_recomendacion(grupo_id: str,
                 'perfil_n_usado': json.dumps(resultado.perfil_n),
             })
         if registros:
-            cliente.table('recomendaciones').insert(registros).execute()
-        return True
+            res = cliente.table('recomendaciones').insert(registros).execute()
+            return res.data or []
+        return []
     except Exception as e:
         print(f"[BD] Error al guardar recomendaciones: {e}")
-        return False
+        return []
 
 
 def guardar_feedback(recomendacion_id: str,
