@@ -4,7 +4,7 @@ Sistema de recomendación grupal para decidir restaurantes en Cali, diseñado pa
 
 La aplicación combina un **portal web SPA**, una **API REST en Flask**, un **motor de recomendación grupal en Python**, persistencia en **Supabase PostgreSQL**, integración con **Telegram mediante n8n** y una suite de pruebas automatizadas para validar el comportamiento del sistema.
 
-**Behance:**
+**Behance:** https://www.behance.net/gallery/250954473/Donde-comemos-hoy-Sociotechnical-Interaction-Case
 
 ---
 
